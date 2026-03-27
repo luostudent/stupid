@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iβaura 包装展开图</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500&family=Noto+Serif+SC:wght@200;300;400;500&display=swap');
+
+    :root {
+      --green: #4ade80;
+      --paper: #ffffff;
+      --ink: #000000;
+      --guide: #16a34a;
+      --cut: #111111;
+      --screen-bg: #d1d5db;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', 'Noto Serif SC', sans-serif;
+      background: radial-gradient(circle at top, #f3f4f6 0%, #d1d5db 55%, #9ca3af 100%);
+      color: #111;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding: 14px 16px;
+      background: rgba(17, 24, 39, 0.88);
+      backdrop-filter: blur(10px);
+      color: #fff;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .toolbar .hint {
+      font-size: 13px;
+      opacity: 0.86;
+    }
+
+    .toolbar button {
+      border: 0;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: #111827;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .toolbar button.primary {
+      background: var(--green);
+      color: #04110a;
+      font-weight: 600;
+    }
+
+    .sheet-wrap {
+      padding: 24px;
+      overflow: auto;
+    }
+
+    .sheet {
+      width: 1080px;
+      min-height: 1036px;
+      margin: 0 auto;
+      background: var(--paper);
+      box-shadow: 0 24px 70px rgba(0,0,0,0.18);
+      border-radius: 18px;
+      padding: 28px;
+      position: relative;
+    }
+
+    .sheet-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 16px;
+      gap: 16px;
+      color: #111827;
+    }
+
+    .sheet-title h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: 1px;
+    }
+
+    .sheet-title p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #4b5563;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-line,
+    .legend-box {
+      width: 26px;
+      height: 0;
+      border-top: 2px solid #111;
+    }
+
+    .legend-line.fold {
+      border-top-style: dashed;
+      border-color: var(--guide);
+    }
+
+    .legend-box {
+      height: 12px;
+      border: 1px solid #111;
+      background: repeating-linear-gradient(-45deg, #f3f4f6 0 6px, #e5e7eb 6px 12px);
+    }
+
+    .net {
+      position: relative;
+      width: 984px;
+      height: 940px;
+      margin: 18px auto 0;
+      background:
+        linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+        linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px) 0 0 / 24px 24px;
+    }
+
+    .guides-hidden .guide,
+    .guides-hidden .guide-label,
+    .guides-hidden .net {
+      background-image: none;
+    }
+
+    .panel,
+    .flap,
+    .glue-tab {
+      position: absolute;
+      background: #000;
+      overflow: hidden;
+      border: 1px solid var(--cut);
+    }
+
+    .guide {
+      position: absolute;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .guide.v {
+      border-left: 2px dashed var(--guide);
+      height: 560px;
+      top: 190px;
+    }
+
+    .guide.h {
+      border-top: 2px dashed var(--guide);
+      width: 360px;
+      left: 144px;
+    }
+
+    .guide.h.side-left,
+    .guide.h.side-right {
+      width: 120px;
+    }
+
+    .guide-label {
+      position: absolute;
+      z-index: 25;
+      font-size: 11px;
+      color: var(--guide);
+      background: rgba(255,255,255,0.88);
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(22,163,74,0.25);
+      pointer-events: none;
+    }
+
+    .glue-tab {
+      left: 0;
+      top: 190px;
+      width: 24px;
+      height: 560px;
+      background: repeating-linear-gradient(-45deg, #f9fafb 0 7px, #e5e7eb 7px 14px);
+      clip-path: polygon(0 0, 100% 12px, 100% calc(100% - 12px), 0 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #374151;
+      font-size: 10px;
+      writing-mode: vertical-rl;
+      letter-spacing: 2px;
+    }
+
+    .dust-flap,
+    .tuck-flap {
+      background: repeating-linear-gradient(-45deg, #f9fafb 0 7px, #e5e7eb 7px 14px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #374151;
+      font-size: 10px;
+      letter-spacing: 2px;
+    }
+
+    .dust-flap.top.left  { left: 24px;  top: 130px; width: 120px; height: 60px; clip-path: polygon(0 100%, 10px 0, calc(100% - 10px) 0, 100% 100%); }
+    .dust-flap.top.right { left: 504px; top: 130px; width: 120px; height: 60px; clip-path: polygon(0 100%, 10px 0, calc(100% - 10px) 0, 100% 100%); }
+    .dust-flap.bottom.left  { left: 24px;  top: 750px; width: 120px; height: 60px; clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 10px 100%); }
+    .dust-flap.bottom.right { left: 504px; top: 750px; width: 120px; height: 60px; clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 10px 100%); }
+
+    .tuck-flap.top {
+      left: 144px;
+      top: 0;
+      width: 360px;
+      height: 70px;
+      clip-path: polygon(0 100%, 12px 18px, 25% 0, 75% 0, calc(100% - 12px) 18px, 100% 100%);
+    }
+
+    .tuck-flap.bottom {
+      left: 144px;
+      top: 870px;
+      width: 360px;
+      height: 70px;
+      clip-path: polygon(0 0, 100% 0, calc(100% - 12px) calc(100% - 18px), 75% 100%, 25% 100%, 12px calc(100% - 18px));
+    }
+
+    .panel-left  { left: 24px;  top: 190px; width: 120px; height: 560px; }
+    .panel-front { left: 144px; top: 190px; width: 360px; height: 560px; }
+    .panel-right { left: 504px; top: 190px; width: 120px; height: 560px; }
+    .panel-back  { left: 624px; top: 190px; width: 360px; height: 560px; }
+    .panel-top   { left: 144px; top: 70px;  width: 360px; height: 120px; background: #000; }
+    .panel-bottom{ left: 144px; top: 750px; width: 360px; height: 120px; background: #000; }
+
+    .panel-label {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      z-index: 5;
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.68);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .face-fill {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .scaled-square-fit {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      left: 0;
+      top: 0;
+      transform: none;
+      transform-origin: center;
+    }
+
+    /* Front */
+    .face-front {
+      background-color: #121212;
+      font-family: 'Inter', 'Noto Serif SC', serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 360px;
+      height: 560px;
+      margin: 0;
+      padding: 10px 0;
+    }
+
+    .face-front .packaging-card {
+      width: 360px;
+      height: 560px;
+      background: #000000;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.9);
+      border: 1px solid #222;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 30px 30px 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .face-front .illustration-container {
+      width: 200px;
+      margin-bottom: 25px;
+      position: relative;
+    }
+
+    .face-front .corner-image {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 80px;
+      height: auto;
+    }
+
+    .face-front .brand-section {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .face-front .brand-logo {
+      font-size: 44px;
+      font-weight: 200;
+      color: #ffffff;
+      letter-spacing: 6px;
+      margin-bottom: 0;
+      text-transform: lowercase;
+      line-height: 1.1;
+    }
+
+    .face-front .brand-logo span {
+      color: #4ade80;
+      font-weight: 400;
+    }
+
+    .face-front .product-type {
+      font-size: 15px;
+      color: #ffffff;
+      letter-spacing: 5px;
+      margin-bottom: 6px;
+      font-weight: 400;
+    }
+
+    .face-front .sub-title {
+      font-size: 11px;
+      color: #666;
+      letter-spacing: 1px;
+      font-family: 'Noto Serif SC';
+      font-weight: 200;
+    }
+
+    .face-front .tag-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 30px;
+    }
+
+    .face-front .tag-line {
+      height: 1px;
+      width: 50px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 2px 0;
+    }
+
+    .face-front .tag-text {
+      font-size: 14px;
+      color: #4ade80;
+      letter-spacing: 3px;
+      font-family: 'Noto Serif SC';
+      font-weight: 400;
+    }
+
+    .face-front .footer-info {
+      margin-top: auto;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      border-top: 1px solid #1a1a1a;
+      padding-top: 15px;
+    }
+
+    .face-front .footer-left {
+      font-size: 10px;
+      color: #444;
+      letter-spacing: 1px;
+      line-height: 1.4;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    /* Back */
+    .face-back {
+      background-color: #121212;
+      font-family: 'Inter', 'Noto Serif SC', serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 360px;
+      height: 560px;
+      margin: 0;
+      padding: 10px 0;
+    }
+
+    .face-back .packaging-card-back {
+      width: 360px;
+      height: 560px;
+      background: #000000;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.9);
+      border: 1px solid #222;
+      display: flex;
+      flex-direction: column;
+      padding: 40px 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .face-back .header-section {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .face-back .brand-logo {
+      font-size: 32px;
+      font-weight: 200;
+      color: #ffffff;
+      letter-spacing: 5px;
+      text-transform: lowercase;
+      margin-bottom: 4px;
+    }
+
+    .face-back .brand-logo span {
+      color: #4ade80;
+      font-weight: 400;
+    }
+
+    .face-back .header-desc {
+      font-size: 12px;
+      color: #666;
+      letter-spacing: 2px;
+      font-family: 'Noto Serif SC';
+    }
+
+    .face-back .content-section {
+      margin-bottom: 22px;
+    }
+
+    .face-back .section-title {
+      font-size: 13px;
+      color: #4ade80;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+    }
+
+    .face-back .section-title::after {
+      content: '';
+      flex-grow: 1;
+      height: 0.5px;
+      background: rgba(74, 222, 128, 0.2);
+      margin-left: 10px;
+    }
+
+    .face-back .text-block {
+      font-size: 11px;
+      color: #999;
+      line-height: 1.7;
+      text-align: justify;
+      letter-spacing: 0.5px;
+    }
+
+    .face-back .list-item {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 10.5px;
+      color: #777;
+    }
+
+    .face-back .list-dot {
+      color: #4ade80;
+      font-weight: bold;
+    }
+
+    .face-back .notice-block {
+      background: rgba(255, 255, 255, 0.02);
+      padding: 10px;
+      border-left: 1px solid #333;
+      margin-top: 5px;
+    }
+
+    .face-back .notice-item {
+      font-size: 10px;
+      color: #555;
+      margin-bottom: 2px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .face-back .footer-specs {
+      margin-top: auto;
+      border-top: 1px solid #1a1a1a;
+      padding-top: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      row-gap: 6px;
+    }
+
+    .face-back .spec-item {
+      font-size: 9.5px;
+      color: #444;
+      letter-spacing: 0.5px;
+      width: 48%;
+    }
+
+    /* Left */
+    .face-left {
+      background-color: #000;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 120px;
+      height: 560px;
+      overflow: hidden;
+    }
+
+    .face-left .packaging-side {
+      width: 120px;
+      height: 560px;
+      background: #000;
+      border: 1px solid #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .face-left .art-canvas {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .face-left .cn-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 42px;
+      font-weight: 200;
+      color: #ffffff;
+      line-height: 1.1;
+    }
+
+    .face-left .cn-top {
+      transform: skewX(-15deg) rotate(-5deg) translateX(-10px);
+      margin-bottom: 5px;
+    }
+
+    .face-left .cn-bottom {
+      transform: skewX(15deg) rotate(5deg) translateX(12px);
+      color: #f0f0f0;
+    }
+
+    .face-left .en-group {
+      margin-top: 40px;
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      font-weight: 100;
+      color: #4ade80;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      transform: skewY(-5deg) rotate(10deg) translateX(15px);
+      opacity: 0.8;
+    }
+
+    .face-left .side-ruler {
+      position: absolute;
+      left: 10px;
+      height: 100px;
+      width: 1px;
+      background: linear-gradient(to bottom, #333, transparent);
+    }
+
+    /* Right */
+    .face-right {
+      background-color: #000;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 120px;
+      height: 560px;
+      overflow: hidden;
+      font-family: 'Inter', 'Noto Serif SC', serif;
+    }
+
+    .face-right .packaging-side-right {
+      width: 120px;
+      height: 560px;
+      background: #000;
+      border: 1px solid #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      padding: 30px 10px 18px 10px;
+      box-sizing: border-box;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .face-right .divider-top {
+      width: 16px;
+      height: 1px;
+      background: #4ade80;
+      margin-bottom: 22px;
+    }
+
+    .face-right .label-group {
+      margin-bottom: 28px;
+    }
+
+    .face-right .label-main {
+      font-family: 'Inter', sans-serif;
+      font-size: 8px;
+      font-weight: 300;
+      letter-spacing: 2px;
+      color: #555;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .face-right .label-content {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 12px;
+      font-weight: 200;
+      color: #ccc;
+      line-height: 1.5;
+      writing-mode: vertical-rl;
+      letter-spacing: 2px;
+    }
+
+    .face-right .scent-structure {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 18px;
+    }
+
+    .face-right .structure-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      min-height: 0;
+    }
+
+    .face-right .struct-tag {
+      font-family: 'Inter', sans-serif;
+      font-size: 7px;
+      color: #4ade80;
+      border: 0.5px solid rgba(74, 222, 128, 0.3);
+      padding: 2px 4px;
+      margin-bottom: 8px;
+      transform: scale(0.9);
+      transform-origin: left;
+      letter-spacing: 1px;
+    }
+
+    .face-right .struct-val {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 11px;
+      color: #999;
+      writing-mode: vertical-rl;
+      letter-spacing: 1px;
+      line-height: 1.35;
+      max-height: 120px;
+    }
+
+    .face-right .bottom-data {
+      font-family: 'Inter', sans-serif;
+      font-size: 8px;
+      color: #333;
+      letter-spacing: 0.5px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: calc(100% - 10px);
+      margin-top: 14px;
+      line-height: 1.2;
+    }
+
+    .face-right .vertical-line {
+      position: absolute;
+      right: 10px;
+      top: 30px;
+      bottom: 18px;
+      width: 0.5px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    /* Top */
+    .face-top {
+      width: 360px;
+      height: 120px;
+      background-color: #000;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 120px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .face-top .packaging-top {
+      width: 360px;
+      height: 120px;
+      background: #000;
+      border: 1px solid #1a1a1a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .face-top .geometry-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      transform: scale(0.42);
+      transform-origin: center;
+    }
+
+    .face-top .outer-square {
+      width: 240px;
+      height: 240px;
+      border: 0.5px solid rgba(255, 255, 255, 0.1);
+      transform: rotate(45deg);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .face-top .inner-circle {
+      width: 160px;
+      height: 160px;
+      border: 1px solid rgba(74, 222, 128, 0.2);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .face-top .center-logo {
+      width: 80px;
+      height: 80px;
+      background: radial-gradient(circle, #111 0%, #000 100%);
+      border: 0.5px solid #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 0 30px rgba(74, 222, 128, 0.05);
+    }
+
+    .face-top .logo-text {
+      font-family: 'Inter', sans-serif;
+      font-size: 24px;
+      font-weight: 200;
+      color: #fff;
+      letter-spacing: 2px;
+    }
+
+    .face-top .logo-text span {
+      color: #4ade80;
+      font-weight: 400;
+    }
+
+    .face-top .rotating-text {
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      left: 18px;
+      top: -14px;
+      animation: rotateText 20s linear infinite;
+      opacity: 0.95;
+    }
+
+    @keyframes rotateText {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .face-top .char {
+      position: absolute;
+      left: 50%;
+      transform-origin: 0 75px;
+      font-family: 'Inter', sans-serif;
+      font-size: 5px;
+      color: #222;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .face-top .open-indicator {
+      position: absolute;
+      right: 18px;
+      bottom: 16px;
+      font-family: 'Inter', sans-serif;
+      font-size: 8px;
+      color: #444;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* Bottom */
+    .face-bottom {
+      width: 360px;
+      height: 120px;
+      background-color: #000;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 120px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .face-bottom .packaging-bottom {
+      width: 360px;
+      height: 120px;
+      background: #000;
+      border: 1px solid #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 14px 18px;
+      box-sizing: border-box;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .face-bottom .geo-coordinates {
+      font-family: 'Inter', sans-serif;
+      font-size: 7px;
+      font-weight: 200;
+      color: #444;
+      letter-spacing: 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      min-width: 96px;
+    }
+
+    .face-bottom .geo-coordinates span {
+      color: #4ade80;
+      font-weight: 300;
+    }
+
+    .face-bottom .barcode-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .face-bottom .barcode-stripes {
+      display: flex;
+      gap: 2px;
+      align-items: flex-end;
+      height: 28px;
+      opacity: 0.6;
+    }
+
+    .face-bottom .stripe {
+      background-color: #ffffff;
+      width: 1.5px;
+    }
+
+    .face-bottom .info-footer {
+      width: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 8px;
+      min-width: 110px;
+    }
+
+    .face-bottom .compliance-icons {
+      display: flex;
+      gap: 10px;
+      opacity: 0.3;
+    }
+
+    .face-bottom .icon-svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: #fff;
+      stroke-width: 1.5;
+    }
+
+    .face-bottom .serial-number {
+      font-family: 'Inter', sans-serif;
+      font-size: 6px;
+      color: #333;
+      text-align: right;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+
+    .face-bottom .bg-dots {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
+      background-size: 20px 20px;
+      top: 0;
+      left: 0;
+      z-index: 0;
+      opacity: 0.5;
+    }
+
+    .face-bottom .content-layer {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 98px 1fr 112px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .print-note {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #4b5563;
+      text-align: center;
+    }
+
+    @media print {
+      @page {
+        size: A3 landscape;
+        margin: 8mm;
+      }
+
+      body {
+        background: #fff;
+      }
+
+      .toolbar,
+      .sheet-title,
+      .print-note {
+        display: none !important;
+      }
+
+      .sheet-wrap {
+        padding: 0;
+      }
+
+      .sheet {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
+      }
+
+      .net {
+        margin: 0 auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet-wrap">
+    <div class="sheet">
+      <div class="net">
+        <div class="glue-tab">粘贴片</div>
+
+        <div class="flap dust-flap top left">防尘片</div>
+        <div class="flap dust-flap top right">防尘片</div>
+        <div class="flap tuck-flap top">上插舌</div>
+        <div class="flap dust-flap bottom left">防尘片</div>
+        <div class="flap dust-flap bottom right">防尘片</div>
+        <div class="flap tuck-flap bottom">下插舌</div>
+
+        <div class="guide v" style="left:24px;"></div>
+        <div class="guide v" style="left:144px;"></div>
+        <div class="guide v" style="left:504px;"></div>
+        <div class="guide v" style="left:624px;"></div>
+
+        <div class="guide h" style="top:190px;"></div>
+        <div class="guide h" style="top:70px;"></div>
+        <div class="guide h" style="top:750px;"></div>
+        <div class="guide h" style="top:870px;"></div>
+        <div class="guide h side-left" style="left:24px; top:190px;"></div>
+        <div class="guide h side-right" style="left:504px; top:190px;"></div>
+        <div class="guide h side-left" style="left:24px; top:750px;"></div>
+        <div class="guide h side-right" style="left:504px; top:750px;"></div>
+
+        <div class="panel panel-left">
+          <div class="face-fill face-left">
+            <div class="packaging-side">
+              <div class="side-ruler" style="top: 30px;"></div>
+              <div class="art-canvas">
+                <div class="cn-group">
+                  <div class="cn-top">文创</div>
+                  <div class="cn-bottom">十一</div>
+                </div>
+                <div class="en-group">Design 11</div>
+              </div>
+              <div class="side-ruler" style="bottom: 30px; background: linear-gradient(to top, #333, transparent);"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-front">
+          <div class="face-fill face-front">
+            <div class="packaging-card">
+              <img class="corner-image" src="图片变黑(1).png" alt="">
+              <div class="illustration-container">
+                <svg viewBox="0 0 200 320" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <clipPath id="reeds-clip">
+                      <rect x="0" y="0" width="200" height="108" />
+                    </clipPath>
+                  </defs>
+                  <g stroke="white" stroke-width="2.5" stroke-linecap="round" clip-path="url(#reeds-clip)">
+                    <line x1="95" y1="270" x2="65" y2="30" />
+                    <line x1="100" y1="270" x2="100" y2="15" />
+                    <line x1="108" y1="270" x2="145" y2="45" />
+                  </g>
+                  <path d="M75 280 L125 280 L115 195 L85 195 Z" fill="black" stroke="white" stroke-width="2.2" stroke-linejoin="round" />
+                  <g stroke="white" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="85" y1="195" x2="40" y2="115" />
+                    <line x1="92" y1="195" x2="70" y2="110" />
+                    <line x1="100" y1="195" x2="100" y2="108" />
+                    <line x1="108" y1="195" x2="130" y2="110" />
+                    <line x1="115" y1="195" x2="160" y2="115" />
+                  </g>
+                  <ellipse cx="100" cy="110" rx="65" ry="10" fill="black" stroke="white" stroke-width="2.2" />
+                </svg>
+              </div>
+              <div class="brand-section">
+                <div class="brand-logo"><span>iβ</span>aura</div>
+                <div class="product-type">爱北塔 · 文创香氛</div>
+                <div class="sub-title">十一北文创产品</div>
+              </div>
+              <div class="tag-group">
+                <div class="tag-line"></div>
+                <div class="tag-text">纯净绿茶 · 清涩本香</div>
+                <div class="tag-text" style="font-size: 10px; color: #444; letter-spacing: 1px;">PURE GREEN TEA</div>
+                <div class="tag-line"></div>
+              </div>
+              <div class="footer-info">
+                <div class="footer-left">
+                  Reed Diffuser / Home Fragrance<br>
+                  Net Volume: 150ml
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-right">
+          <div class="face-fill face-right">
+            <div class="packaging-side-right">
+              <div class="vertical-line"></div>
+              <div class="divider-top"></div>
+              <div class="label-group">
+                <div class="label-main">Category</div>
+                <div class="label-content">环境香氛系统</div>
+              </div>
+              <div class="scent-structure">
+                <div class="structure-item">
+                  <div class="struct-tag">TOP</div>
+                  <div class="struct-val">新鲜绿茶 · 嫩芽</div>
+                </div>
+                <div class="structure-item">
+                  <div class="struct-tag">MID</div>
+                  <div class="struct-val">草本涩感 · 清苦</div>
+                </div>
+                <div class="structure-item">
+                  <div class="struct-tag">BASE</div>
+                  <div class="struct-val">静谧茶室 · 留香</div>
+                </div>
+              </div>
+              <div class="bottom-data">
+                <span>VOL. 150ML</span>
+                <span>VER. 2.0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-back">
+          <div class="face-fill face-back">
+            <div class="packaging-card-back">
+              <div class="header-section">
+                <div class="brand-logo"><span>iβ</span>aura</div>
+                <div class="header-desc">爱北塔 · 文创香氛</div>
+              </div>
+              <div class="content-section">
+                <div class="section-title">产品介绍</div>
+                <div class="text-block">
+                  以十一学校北校区“爱北塔”建筑为灵感，还原新鲜绿茶初摘的清涩本真。坚持无甜、无花香添加，主打清新内敛的“清、纯、淡、涩”嗅觉体验，营造静谧的校园书卷氛围。
+                </div>
+              </div>
+              <div class="content-section">
+                <div class="section-title">使用说明</div>
+                <div class="list-item"><span class="list-dot">·</span><span>取出内塞，将藤条香棒插入香薰液中；</span></div>
+                <div class="list-item"><span class="list-dot">·</span><span>初次使用建议静置10分钟后翻转香棒；</span></div>
+                <div class="list-item"><span class="list-dot">·</span><span>根据空间大小及浓度喜好，增减藤条数量。</span></div>
+              </div>
+              <div class="content-section">
+                <div class="section-title">注意事项</div>
+                <div class="notice-block">
+                  <div class="notice-item"><span>★</span><span>本品不可食用，请远离儿童、宠物及火源。</span></div>
+                  <div class="notice-item"><span>★</span><span>请置于阴凉通风处避光保存，避免阳光直射变质。</span></div>
+                  <div class="notice-item"><span>★</span><span>若液体接触皮肤或眼睛，请立即用大量清水冲洗。</span></div>
+                </div>
+              </div>
+              <div class="footer-specs">
+                <div class="spec-item">净含量：150ml</div>
+                <div class="spec-item">保质期：24个月</div>
+                <div class="spec-item">香型：纯绿茶清涩调</div>
+                <div class="spec-item">系列：十一北文创产品</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-top">
+          <div class="scaled-square-fit">
+            <div class="face-top">
+              <div class="packaging-top">
+                <div class="rotating-text" id="circularText"></div>
+                <div class="geometry-container">
+                  <div class="outer-square">
+                    <div class="inner-circle">
+                      <div class="center-logo">
+                        <div class="logo-text"><span>iβ</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="open-indicator">Open from here</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel panel-bottom">
+          <div class="scaled-square-fit">
+            <div class="face-bottom">
+              <div class="packaging-bottom">
+                <div class="bg-dots"></div>
+                <div class="content-layer">
+                  <div class="geo-coordinates">
+                    <div>LOCATION ORIGIN</div>
+                    <div><span>40.0645° N, 116.1067° E</span></div>
+                  </div>
+                  <div class="barcode-section">
+                    <div class="barcode-stripes">
+                      <div class="stripe" style="height: 30px; width: 1px;"></div>
+                      <div class="stripe" style="height: 40px; width: 3px;"></div>
+                      <div class="stripe" style="height: 25px; width: 1px;"></div>
+                      <div class="stripe" style="height: 35px; width: 1px;"></div>
+                      <div class="stripe" style="height: 40px; width: 4px; background: #4ade80;"></div>
+                      <div class="stripe" style="height: 30px; width: 1px;"></div>
+                      <div class="stripe" style="height: 35px; width: 2px;"></div>
+                      <div class="stripe" style="height: 40px; width: 1px;"></div>
+                      <div class="stripe" style="height: 20px; width: 5px;"></div>
+                      <div class="stripe" style="height: 38px; width: 1px;"></div>
+                    </div>
+                    <div style="font-family: Inter; font-size: 6px; color: #222; letter-spacing: 2px; white-space: nowrap;">IB-AURA-2026-N</div>
+                  </div>
+                  <div class="info-footer">
+                    <div class="compliance-icons">
+                      <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+                      <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                    </div>
+                    <div class="serial-number">
+                      BATCH NO: 202603-A1<br>
+                      PRODUCED BY iβAURA LAB
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+    const text = 'PURE GREEN TEA SENSORY EXPERIENCE • ';
+    const container = document.getElementById('circularText');
+    const characters = text.repeat(2).split('');
+    const angleStep = 360 / characters.length;
+
+    characters.forEach((char, i) => {
+      const span = document.createElement('span');
+      span.className = 'char';
+      span.innerText = char;
+      span.style.transform = `rotate(${i * angleStep}deg)`;
+      container.appendChild(span);
+    });
+  </script>
+</body>
+</html>
